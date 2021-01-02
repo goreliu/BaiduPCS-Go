@@ -9,14 +9,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-go@v1
+    - uses: actions/setup-go@v2
       with:
-        go-version: '1.14.2'
+        go-version: '^1.15.6'
     - name: build
       run: bash mybuild
     - name: download
       uses: actions/upload-artifact@v1
       with:
         name: pcs
-        path: BaiduPCS-Go
+        path: pcs
 
