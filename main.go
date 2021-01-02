@@ -154,7 +154,7 @@ func main() {
 				lineArgs                   = args.Parse(line)
 				numArgs                    = len(lineArgs)
 				acceptCompleteFileCommands = []string{
-					"cd", "cp", "download", "export", "fixmd5", "locate", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "share", "transfer", "tree", "upload",
+					"cd", "cp", "download", "export", "find", "fixmd5", "locate", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "share", "transfer", "tree", "upload",
 				}
 				closed = strings.LastIndex(line, " ") == len(line)-1
 			)
@@ -1279,6 +1279,18 @@ func main() {
 					Usage: "保存的网盘路径",
 					Value: "superfile",
 				},
+			},
+		},
+        {
+			Name:      "find",
+			Aliases:   []string{"f"},
+			Usage:     "列出文件路径",
+			UsageText: app.Name + " find <目录>",
+			Category:  "百度网盘",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				pcscommand.RunFind(c.Args().Get(0))
+				return nil
 			},
 		},
 		{
