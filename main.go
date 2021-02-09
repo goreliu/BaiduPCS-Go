@@ -55,7 +55,7 @@ const (
 
 var (
 	// Version 版本号
-	Version = "v3.7.3-devel"
+	Version = "v3.7.5-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -1430,6 +1430,7 @@ func main() {
 				}
 				opt := &baidupcs.TransferOption{
 					Download: c.Bool("download"),
+					Collect: c.Bool("collect"),
 				}
 				pcscommand.RunShareTransfer(c.Args(), opt)
 				return nil
@@ -1438,6 +1439,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "download",
 					Usage: "转存后直接下载到本地默认目录",
+				},
+				cli.BoolFlag{
+					Name:  "collect",
+					Usage: "多文件整合到一个文件夹中",
 				},
 			},
 		},
@@ -1866,6 +1871,13 @@ func main() {
 						if c.IsSet("pcs_ua") {
 							pcsconfig.Config.SetPCSUA(c.String("pcs_ua"))
 						}
+						if c.IsSet("pcs_addr") {
+							match := pcsconfig.Config.SETPCSAddr(c.String("pcs_addr"))
+							if !match {
+								fmt.Println("设置 pcs_addr 错误: pcs服务器地址不合法")
+								return nil
+							}
+						}
 						if c.IsSet("pan_ua") {
 							pcsconfig.Config.SetPanUA(c.String("pan_ua"))
 						}
@@ -1975,6 +1987,10 @@ func main() {
 						cli.StringFlag{
 							Name:  "pcs_ua",
 							Usage: "PCS 浏览器标识",
+						},
+						cli.StringFlag{
+							Name:  "pcs_addr",
+							Usage: "PCS 服务器地址",
 						},
 						cli.StringFlag{
 							Name:  "pan_ua",
