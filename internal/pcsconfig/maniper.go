@@ -130,7 +130,7 @@ func (c *PCSConfig) SetupUserByBDUSS(bduss, ptoken, stoken, cookies string) (bai
 		UID: b.UID,
 	}) // 删除旧的信息
 
-	b.PTOKEN = ptoken
+	b.PTOKEN = ptoken // 实际未使用
 	b.STOKEN = stoken
 	b.COOKIES = cookies
 
@@ -223,6 +223,11 @@ func (c *PCSConfig) SetEnableHTTPS(https bool) {
 
 func (c *PCSConfig) SetNoCheck(nocheck bool) {
 	c.NoCheck = nocheck
+}
+
+// SetUploadPolicy 设置上传文件重名时的处理策略
+func (c *PCSConfig) SetUploadPolicy(upolicy string) {
+	c.UPolicy = upolicy
 }
 
 // SetProxy 设置代理

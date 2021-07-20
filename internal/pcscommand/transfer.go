@@ -3,10 +3,12 @@ package pcscommand
 import (
 	"encoding/base64"
 	"fmt"
+	"math/rand"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/qjfoidnh/BaiduPCS-Go/baidupcs"
 )
@@ -18,7 +20,7 @@ func RunShareTransfer(params []string, opt *baidupcs.TransferOption) {
 	if len(params) == 1 {
 		link = params[0]
 		if strings.Contains(link, "bdlink=") || !strings.Contains(link, "pan.baidu.com/") {
-			RunRapidTransfer(link)
+			RunRapidTransfer(link, opt.Fix)
 			return
 		}
 		extracode = "none"
@@ -34,7 +36,7 @@ func RunShareTransfer(params []string, opt *baidupcs.TransferOption) {
 	if strings.Contains(featurestr, "init?") {
 		featurestr = "1" + strings.Split(featurestr, "=")[1]
 	}
-	if (len(featurestr)!=8 && len(featurestr)!=23) || featurestr[0:1] != "1" || len(extracode) != 4 {
+	if len(featurestr) > 23 || featurestr[0:1] != "1" || len(extracode) != 4 {
 		fmt.Printf("%s失败: %s\n", baidupcs.OperationShareFileSavetoLocal, "链接地址或提取码非法")
 		return
 	}
@@ -100,13 +102,25 @@ func RunShareTransfer(params []string, opt *baidupcs.TransferOption) {
 	if opt.Download {
 		fmt.Println("即将开始下载")
 		paths := strings.Split(resp["filenames"], ",")
-		paths = paths[0: len(paths)-1]
+		paths = paths[0 : len(paths)-1]
 		RunDownload(paths, nil)
 	}
 }
 
+func randomifyMD5(md5 string) string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	newmd5bytes := []byte(md5)
+	uppermd5 := []byte(strings.ToUpper(md5))
+	for i, _ := range md5 {
+		if r.Float32() > 0.6 {
+			newmd5bytes[i] = uppermd5[i]
+		}
+	}
+	return string(newmd5bytes)
+}
+
 // RunRapidTransfer 执行秒传链接解析及保存
-func RunRapidTransfer(link string) {
+func RunRapidTransfer(link string, fix bool) {
 	if strings.Contains(link, "bdlink=") || strings.Contains(link, "bdpan://") {
 		r, _ := regexp.Compile(`(bdlink=|bdpan://)([^\s]+)`)
 		link1 := r.FindStringSubmatch(link)[2]
@@ -118,10 +132,13 @@ func RunRapidTransfer(link string) {
 		link = string(decodeBytes)
 	}
 	link = strings.TrimSpace(link)
-	substrs := strings.Split(link, "#")
+	substrs := strings.SplitN(link, "#", 4)
 	if len(substrs) == 4 {
-		md5 := strings.ToLower(substrs[0])
-		slicemd5 := strings.ToLower(substrs[1])
+		md5 := strings.ToUpper(substrs[0])
+		if fix {
+			md5 = randomifyMD5(md5)
+		}
+		slicemd5 := strings.ToUpper(substrs[1])
 		length, _ := strconv.ParseInt(substrs[2], 10, 64)
 		filename := path.Join(GetActiveUser().Workdir, substrs[3])
 		RunRapidUpload(filename, md5, slicemd5, "", length)
@@ -129,8 +146,11 @@ func RunRapidTransfer(link string) {
 	}
 	substrs = strings.Split(link, "|")
 	if len(substrs) == 4 {
-		md5 := strings.ToLower(substrs[2])
-		slicemd5 := strings.ToLower(substrs[3])
+		md5 := strings.ToUpper(substrs[2])
+		if fix {
+			md5 = randomifyMD5(md5)
+		}
+		slicemd5 := strings.ToUpper(substrs[3])
 		length, _ := strconv.ParseInt(substrs[1], 10, 64)
 		filename := path.Join(GetActiveUser().Workdir, substrs[0])
 		RunRapidUpload(filename, md5, slicemd5, "", length)

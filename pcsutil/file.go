@@ -110,3 +110,15 @@ func WalkDir(dirPth, suffix string) (files []string, err error) {
 func ConvertToUnixPathSeparator(p string) string {
 	return strings.Replace(p, "\\", "/", -1)
 }
+
+func ChPathLegal(p string) bool {
+	illegal_chars := "<>|:'\"*?,\\"
+	if runtime.GOOS == "windows" {
+		illegal_chars = "<>|'\"*?,\\"
+	}
+
+	if strings.ContainsAny(p, illegal_chars) {
+		return false
+	}
+	return true
+}

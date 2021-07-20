@@ -2,8 +2,8 @@ package uploader
 
 import (
 	"context"
-	"github.com/qjfoidnh/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/oleiade/lane"
+	"github.com/qjfoidnh/BaiduPCS-Go/pcsutil/waitgroup"
 	"os"
 )
 
@@ -125,7 +125,7 @@ func (muer *MultiUploader) upload() (uperr error) {
 	default:
 	}
 
-	cerr := muer.multiUpload.CreateSuperFile(muer.workers.CheckSumList()...)
+	cerr := muer.multiUpload.CreateSuperFile(muer.config.Policy, muer.workers.CheckSumList()...)
 	if cerr != nil {
 		return cerr
 	}

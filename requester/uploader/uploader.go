@@ -60,7 +60,7 @@ func (u *Uploader) lazyInit() {
 		u.client = requester.NewHTTPClient()
 	}
 	u.client.SetTimeout(0)
-	u.client.SetResponseHeaderTimeout(0)
+	u.client.SetResponseHeaderTimeout(10 * time.Second)
 }
 
 // SetClient 设置http客户端

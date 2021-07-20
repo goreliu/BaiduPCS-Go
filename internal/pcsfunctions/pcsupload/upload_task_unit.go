@@ -28,12 +28,14 @@ type (
 		LocalFileChecksum *checksum.LocalFileChecksum // 要上传的本地文件详情
 		Step              StepUpload
 		SavePath          string // 保存路径
+		PrintFormat       string
 
 		PCS               *baidupcs.BaiduPCS
 		UploadingDatabase *UploadingDatabase // 数据库
 		Parallel          int
 		NoRapidUpload     bool // 禁用秒传
 		NoSplitFile       bool // 禁用分片上传
+		Policy            string // 上传重名文件策略
 
 		UploadStatistic *UploadStatistic
 
@@ -55,6 +57,7 @@ const (
 
 const (
 	StrUploadFailed = "上传文件失败"
+	DefaultPrintFormat = "\r[%s] ↑ %s/%s %s/s in %s ............"
 )
 
 func (utu *UploadTaskUnit) SetTaskInfo(taskInfo *taskframework.TaskInfo) {
@@ -195,13 +198,13 @@ func (utu *UploadTaskUnit) upload() (result *taskframework.TaskUnitRunResult) {
 		Parallel:  utu.Parallel,
 		BlockSize: blockSize,
 		MaxRate:   pcsconfig.Config.MaxUploadRate,
+		Policy:    utu.Policy,
 	})
 
 	// 设置断点续传
 	if utu.state != nil {
 		muer.SetInstanceState(utu.state)
 	}
-
 	muer.OnUploadStatusEvent(func(status uploader.Status, updateChan <-chan struct{}) {
 		select {
 		case <-updateChan:
@@ -210,7 +213,7 @@ func (utu *UploadTaskUnit) upload() (result *taskframework.TaskUnitRunResult) {
 		default:
 		}
 
-		fmt.Printf("\r[%s] ↑ %s/%s %s/s in %s ............", utu.taskInfo.Id(),
+		fmt.Printf(utu.PrintFormat, utu.taskInfo.Id(),
 			converter.ConvertFileSize(status.Uploaded(), 2),
 			converter.ConvertFileSize(status.TotalSize(), 2),
 			converter.ConvertFileSize(status.SpeedsPerSecond(), 2),
@@ -254,10 +257,12 @@ func (utu *UploadTaskUnit) upload() (result *taskframework.TaskUnitRunResult) {
 
 				result.ResultMessage = StrUploadFailed
 				result.Err = errors.New("上传状态过期, 重新上传")
-			case 31200:
-				//服务器错误
-				//[Method:Insert][Error:Insert Request Forbid]
-				// do nothing
+			case 31061:
+				// 已存在重名文件, 不重试
+				result.ResultMessage = StrUploadFailed
+				result.Err = pcsError
+				result.NeedRetry = false
+				return
 			default:
 				result.ResultMessage = StrUploadFailed
 				result.Err = pcsError

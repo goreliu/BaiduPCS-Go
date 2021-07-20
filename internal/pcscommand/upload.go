@@ -29,8 +29,16 @@ type (
 		Load 		  int
 		NoRapidUpload bool
 		NoSplitFile   bool // 禁用分片上传
+		Policy        string // 同名文件处理策略
 	}
 )
+
+func uploadPrintFormat(load int) string {
+	if load <= 1 {
+		return pcsupload.DefaultPrintFormat
+	}
+	return "[%s] ↑ %s/%s %s/s in %s ...\n"
+}
 
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
 func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) {
@@ -51,13 +59,13 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 }
 
 // RunCreateSuperFile 执行分片上传—合并分片文件
-func RunCreateSuperFile(targetPath string, blockList ...string) {
+func RunCreateSuperFile(policy string, targetPath string, blockList ...string) {
 	err := matchPathByShellPatternOnce(&targetPath)
 	if err != nil {
 		fmt.Printf("警告: %s, 获取网盘路径 %s 错误, %s\n", baidupcs.OperationUploadCreateSuperFile, targetPath, err)
 	}
 
-	err = GetBaiduPCS().UploadCreateSuperFile(true, targetPath, blockList...)
+	err = GetBaiduPCS().UploadCreateSuperFile(policy, true, targetPath, blockList...)
 	if err != nil {
 		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationUploadCreateSuperFile, err)
 		return
@@ -84,6 +92,10 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 
 	if opt.Load <=0 {
 		opt.Load = pcsconfig.Config.MaxUploadLoad
+	}
+
+	if opt.Policy!="fail" && opt.Policy!="newcopy" && opt.Policy!="overwrite" && opt.Policy!="skip" {
+		opt.Policy = pcsconfig.Config.UPolicy
 	}
 
 	err := matchPathByShellPatternOnce(&savePath)
@@ -120,7 +132,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 
 	statistic.StartTimer() // 开始计时
 
-	LoadCount := 1
+	LoadCount := 0
 
 	for k := range localPaths {
 		walkedFiles, err := pcsutil.WalkDir(localPaths[k], "")
@@ -143,8 +155,14 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			if localPathDir == "." {
 				localPathDir = ""
 			}
-
+			if len(localPaths) == 1 && len(walkedFiles) == 1 {
+				opt.Load = 1
+			}
 			subSavePath = strings.TrimPrefix(walkedFiles[k3], localPathDir)
+			if !pcsutil.ChPathLegal(walkedFiles[k3]) {
+				fmt.Printf("[0] %s 文件路径含有非法字符，已跳过!\n", walkedFiles[k3])
+				continue
+			}
 			LoadCount++
 			info := executor.Append(&pcsupload.UploadTaskUnit{
 				LocalFileChecksum: checksum.NewLocalFileChecksum(walkedFiles[k3], int(baidupcs.SliceMD5Size)),
@@ -152,9 +170,11 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				PCS:               pcs,
 				UploadingDatabase: uploadDatabase,
 				Parallel:          opt.Parallel,
+				PrintFormat:       uploadPrintFormat(opt.Load),
 				NoRapidUpload:     opt.NoRapidUpload,
 				NoSplitFile:       opt.NoSplitFile,
 				UploadStatistic:   statistic,
+				Policy:            opt.Policy,
 			}, opt.MaxRetry)
 			if LoadCount >= opt.Load {
 				LoadCount = opt.Load

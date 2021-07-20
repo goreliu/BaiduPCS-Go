@@ -11,6 +11,7 @@ import (
 	"github.com/qjfoidnh/BaiduPCS-Go/requester/uploader"
 	"io"
 	"net/http"
+	"time"
 )
 
 type (
@@ -22,6 +23,8 @@ type (
 	EmptyReaderLen64 struct {
 	}
 )
+
+var client *requester.HTTPClient = pcsconfig.Config.PCSHTTPClient()
 
 func (e EmptyReaderLen64) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
@@ -54,9 +57,9 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 
 	var respErr *uploader.MultiError
 	checksum, pcsError := pu.pcs.UploadTmpFile(func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error) {
-		client := pcsconfig.Config.PCSHTTPClient()
+		//client := pcsconfig.Config.PCSHTTPClient()
 		client.SetCookiejar(jar)
-		client.SetTimeout(0)
+		client.SetTimeout(200 * time.Second)
 
 		mr := multipartreader.NewMultipartReader()
 		mr.AddFormFile("uploadedfile", "", r)
@@ -70,7 +73,7 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 			if resp != nil {
 				// 不可恢复的错误
 				switch resp.StatusCode {
-				case 400, 401, 403, 413:
+				case 400, 401, 403, 413: // 4xx通常是由客户端非法操作引发，直接深度重试
 					respErr = &uploader.MultiError{
 						Terminated: true,
 					}
@@ -95,12 +98,12 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 	return checksum, pcsError
 }
 
-func (pu *PCSUpload) CreateSuperFile(checksumList ...string) (err error) {
+func (pu *PCSUpload) CreateSuperFile(policy string, checksumList ...string) (err error) {
 	pu.lazyInit()
 
 	// 先在网盘目标位置, 上传一个空文件
 	// 防止出现file does not exist
-	pcsError := pu.pcs.Upload(pu.targetPath, func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error) {
+	pcsError := pu.pcs.Upload(policy, pu.targetPath, func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error) {
 		mr := multipartreader.NewMultipartReader()
 		mr.AddFormFile("file", "file", &EmptyReaderLen64{})
 		mr.CloseMultipart()
@@ -115,5 +118,5 @@ func (pu *PCSUpload) CreateSuperFile(checksumList ...string) (err error) {
 		return pcsError
 	}
 
-	return pu.pcs.UploadCreateSuperFile(false, pu.targetPath, checksumList...)
+	return pu.pcs.UploadCreateSuperFile(policy,false, pu.targetPath, checksumList...)
 }
