@@ -55,7 +55,7 @@ const (
 
 var (
 	// Version 版本号
-	Version = "v3.8.1-devel"
+	Version = "v3.8.4-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -821,11 +821,11 @@ func main() {
 	同时显示文件名和fsid
 	BaiduPCS-Go tree --fsid
 `,
-			Category:  "百度网盘",
-			Before:    reloadFn,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunTree(c.Args().Get(0), 0, &pcscommand.TreeOptions{
-					Depth: c.Int("depth"),
+					Depth:    c.Int("depth"),
 					ShowFsid: c.Bool("fsid"),
 				})
 				return nil
@@ -834,7 +834,7 @@ func main() {
 				cli.IntFlag{
 					Name:  "depth",
 					Usage: "显示深度",
-					Value:-1,
+					Value: -1,
 				},
 				cli.BoolFlag{
 					Name:  "fsid",
@@ -1120,8 +1120,8 @@ func main() {
 					Usage: "下载文件完成后不校验文件",
 				},
 				cli.BoolFlag{
-					Name:        "fullpath",
-					Usage:       "以网盘完整路径保存到本地",
+					Name:  "fullpath",
+					Usage: "以网盘完整路径保存到本地",
 				},
 			},
 		},
@@ -1293,7 +1293,7 @@ func main() {
 			Description: `
 	block1, block2 ... 为文件分片的md5值
 	上传的文件将会保存到网盘的目标目录.
-	遇到同名文件默认会自动覆盖!
+	遇到同名文件默认覆盖, 可以--policy参数指定, 支持newcopy, skip, overwrite, fail四种模式
 
 	示例:
 
@@ -1443,8 +1443,7 @@ func main() {
 				}
 				opt := &baidupcs.TransferOption{
 					Download: c.Bool("download"),
-					Collect: c.Bool("collect"),
-					Fix: c.Bool("fix"),
+					Collect:  c.Bool("collect"),
 				}
 				pcscommand.RunShareTransfer(c.Args(), opt)
 				return nil
@@ -1457,10 +1456,6 @@ func main() {
 				cli.BoolFlag{
 					Name:  "collect",
 					Usage: "多文件整合到一个文件夹中",
-				},
-				cli.BoolFlag{
-					Name:  "fix",
-					Usage: "修复和谐秒传",
 				},
 			},
 		},
@@ -1488,7 +1483,7 @@ func main() {
 						}
 						opt := &baidupcs.ShareOption{
 							Password: c.String("p"),
-							Period: c.Int("period"),
+							Period:   c.Int("period"),
 						}
 						pcscommand.RunShareSet(c.Args(), opt)
 						return nil
@@ -1504,7 +1499,6 @@ func main() {
 							Usage: "有效天数, 0为永久",
 							Value: 0,
 						},
-
 					},
 				},
 				{
