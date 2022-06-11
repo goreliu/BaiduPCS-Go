@@ -30,6 +30,7 @@ type (
 		NoRapidUpload bool
 		NoSplitFile   bool // 禁用分片上传
 		Policy        string // 同名文件处理策略
+		NoFilenameCheck bool // 禁用文件名合法性检查
 	}
 )
 
@@ -86,6 +87,8 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		opt.Parallel = pcsconfig.Config.MaxUploadParallel
 	}
 
+	opt.NoFilenameCheck = pcsconfig.Config.IgnoreIllegal
+
 	if opt.MaxRetry < 0 {
 		opt.MaxRetry = DefaultUploadMaxRetry
 	}
@@ -94,7 +97,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		opt.Load = pcsconfig.Config.MaxUploadLoad
 	}
 
-	if opt.Policy!="fail" && opt.Policy!="newcopy" && opt.Policy!="overwrite" && opt.Policy!="skip" {
+	if opt.Policy!="fail" && opt.Policy!="newcopy" && opt.Policy!="overwrite" && opt.Policy!="skip" && opt.Policy!="rsync" {
 		opt.Policy = pcsconfig.Config.UPolicy
 	}
 
@@ -159,7 +162,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				opt.Load = 1
 			}
 			subSavePath = strings.TrimPrefix(walkedFiles[k3], localPathDir)
-			if !pcsutil.ChPathLegal(walkedFiles[k3]) {
+			if !opt.NoFilenameCheck && !pcsutil.ChPathLegal(walkedFiles[k3]) {
 				fmt.Printf("[0] %s 文件路径含有非法字符，已跳过!\n", walkedFiles[k3])
 				continue
 			}
