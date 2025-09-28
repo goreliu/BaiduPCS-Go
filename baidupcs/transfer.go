@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"fmt"
+	"github.com/qjfoidnh/BaiduPCS-Go/pcsutil"
 	"github.com/qjfoidnh/BaiduPCS-Go/requester"
 	"github.com/tidwall/gjson"
 	"io/ioutil"
@@ -215,13 +216,18 @@ func (pcs *BaiduPCS) GenerateRequestQuery(mode string, params map[string]string)
 		}
 		return
 	}
+
 	_, res["filename"] = filepath.Split(gjson.Get(string(body), `info.0.path`).String())
 	filenames := gjson.Get(string(body), `info.#.path`).Array()
 	filenamesStr := ""
 	for _, _path := range filenames {
 		filenamesStr += "," + path.Base(_path.String())
 	}
-	res["filenames"] = filenamesStr[1:]
+	if len(filenamesStr) < 1 {
+		res["filenames"] = "default" + pcsutil.GenerateRandomString(5)
+	} else {
+		res["filenames"] = filenamesStr[1:]
+	}
 	if len(gjson.Get(string(body), `info.#.fsid`).Array()) > 1 {
 		res["filename"] += "等多个文件/文件夹"
 	}
